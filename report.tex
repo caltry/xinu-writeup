@@ -5,12 +5,14 @@
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{comment}
+\usepackage{verbatim}
 
 \title{XINU Independent Study Report}
 \author{David Larsen}
 \date{\today}
 
 \newcommand{\TODO}[1]{{\huge\color{red}TODO \Large #1}}
+\newcommand{\code}[1]{{\tt #1}}
 
 \begin{document}
 
@@ -19,6 +21,74 @@
 \tableofcontents
 
 \section{ARM Core Interrupt Handler}
+
+\TODO{}
+
+\section{XINU's platform configuration compiler}
+
+\subsection{Adding devices to a XINU platform}
+
+Marqueette University's version of XINU includes a small compiler for
+transforming a description of the hardware for a specific plaform into header
+files and a routine that populates the device table at startup.
+
+So, the description:
+
+\begin{verbatim}
+uart:
+        on HARDWARE -i uartInit     -o ionull        -c ionull
+                    -r uartRead    -g uartGetc       -w uartWrite 
+                    -n ionull      -p uartPutc       -intr uartInterrupt
+
+/* Two uarts on the versatile */
+SERIAL0   is uart     on HARDWARE csr 0x101F1000 irq 12
+SERIAL1   is uart     on HARDWARE csr 0x101F2000 irq 13
+\end{verbatim}
+
+will generate a device entry like this:
+
+\begin{verbatim}
+typedef struct dentry
+{
+        int     num;
+        int     minor;
+        char    *name;
+        devcall (*init)(struct dentry *);
+        devcall (*open)(struct dentry *, ...);
+        devcall (*close)(struct dentry *);
+        devcall (*read)(struct dentry *, void *, uint);
+        devcall (*write)(struct dentry *, void *, uint);
+        devcall (*seek)(struct dentry *, long);
+        devcall (*getc)(struct dentry *);
+        devcall (*putc)(struct dentry *, char);
+        devcall (*control)(struct dentry *, int, long, long);
+        void    *csr;
+        void    (*intr)(void);
+        uchar   irq;
+} device;
+
+[...]
+
+	{ 0, 0, "SERIAL0",
+	  (void *)uartInit, (void *)ionull, (void *)ionull,
+	  (void *)uartRead, (void *)uartWrite, (void *)ioerr,
+	  (void *)uartGetc, (void *)uartPutc, (void *)ionull,
+	  (void *)0x101f1000, (void *)uartInterrupt, 12 },
+\end{verbatim}
+
+So, a routine like \code{puts()} only needs to call
+\code{dentry[\$DEVICE].write()}, without caring what kind of device it is, or
+how it's implemented.
+
+\subsection{Fixing changes in Flex}
+
+\TODO{}
+
+\section{QEMU}
+
+\TODO{}
+
+\subsection{QEMU's broken VIC}
 
 \TODO{}
 
