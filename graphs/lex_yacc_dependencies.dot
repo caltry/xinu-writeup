@@ -1,0 +1,28 @@
+digraph G {
+    //rank = same;
+    //rankdir = LR;
+    //node[shape = record];
+    
+    confl [label = "config.l"];
+    confy [label = "config.y"];
+    lexyyh [label = "lexer headers"];
+    ytabh [label = "token declarations"];
+    scanner[label = "scanner"];
+    parser[label = "parser"];
+    compiler[label = "config compiler"];
+
+    //yacc -> scanner [label = "y.tab.h"]
+    //lex -> parser [label = "lex.yy.h"];
+    //lex -> scanner [label = "codegen"];
+    //yacc -> parser [label = "codegen"];
+
+    confl -> scanner [label = "lex"];
+    confl -> lexyyh [label = "lex"];
+    confy -> parser [label = "yacc"];
+    confy -> ytabh [label = "yacc"];
+    lexyyh -> parser [label = "cc"];
+    ytabh -> scanner [label = "cc"];
+
+    scanner -> compiler [label = "ld"];
+    parser -> compiler [label = "ld"];
+}
