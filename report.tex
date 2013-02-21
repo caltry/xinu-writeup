@@ -35,7 +35,7 @@ In that spirit, we decided that we'd like to try to port XINU to the ARM
 platform because of the recent release of the even cheaper (\$35) Raspberry-PI
 and the opportunity to do a cool project.
 
-\subsection{ARM}
+\subsection{ARM ISA}
 
 \TODO{}
 
@@ -49,7 +49,37 @@ and the opportunity to do a cool project.
 
 \section{ARM Core Interrupt Handler}
 
-\TODO{}
+\TODO{Intro to section}
+
+\subsection{Exception states in the ARM core}
+
+The ARM processor supports several operating states, depending on what
+exception mode it's in. While there are several modes not listed here, we
+decided to only use the user, system and interrupt modes.
+
+When an exception happens in ARM (timer advances, user presses a key or a
+software interrupt is generated), the ARM core saves the user's stack pointer
+and link register\footnote{The link register contains the return address for
+the current function. ARM has a register for this, rather than always pushing
+the return address on the stack, so that leaf-function calls have fewer
+load-store operations to do.} and swaps in a separate stack pointer and link
+register used for exception modes\footnote{Every mode, except for system mode,
+has its own stack pointer and link register.}. Having a separate stack for
+exception handling is pretty cool, but operating on a separate stack can
+quickly become annoying if the active process's time quantum has expired (via
+the timer interrupt) and the scheduler needs to be called.
+
+\begin{table}[h]
+\caption{Traits of different ARM operating modes}
+\label{arm-modes}
+\center
+\begin{tabular}{r || c | c | c}
+mode & stack & link register & privileged \\\hline\hline
+user & user & user & no \\\hline
+system & user & user & yes \\\hline
+interrupt & interrupt & interrupt & yes \\\hline
+\end{tabular}
+\end{table}
 
 \section{XINU's platform configuration compiler}
 
