@@ -47,7 +47,7 @@ and the opportunity to do a cool project.
 
 \TODO{}
 
-\section{ARM Core Interrupt Handler}
+\section{Handling interrupts and context switches}
 
 \TODO{Intro to section}
 
@@ -69,11 +69,23 @@ exception handling is pretty cool, but operating on a separate stack can
 quickly become annoying if the active process's time quantum has expired (via
 the timer interrupt) and the scheduler needs to be called.
 
+To switch the active process context, the interrupt handler needs to have
+access to the user-mode stack pointer and link register so that the new process
+will be running when the system returns from the interrupt.  Privileged
+operating modes have the ability to manually change the operating mode that the
+ARM core is in. The processor must be in IRQ mode to successfully properly
+return from the interrupt, so we need to be able to switch to a mode that has
+access to the user stack, change the active process, return to IRQ mode and
+return. Since there's no going back once you switch to user mode, the ARM
+architects added the system mode, which has access to all of the user mode
+registers.
+
 \begin{table}[h]
 \caption{Traits of different ARM operating modes}
 \label{arm-modes}
 \center
-\begin{tabular}{r || c | c | c}
+\begin{tabular}{| r || c | c | c |}
+\hline
 mode & stack & link register & privileged \\\hline\hline
 user & user & user & no \\\hline
 system & user & user & yes \\\hline
