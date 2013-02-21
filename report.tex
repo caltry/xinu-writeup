@@ -93,6 +93,155 @@ interrupt & interrupt & interrupt & yes \\\hline
 \end{tabular}
 \end{table}
 
+\subsection{Context switching in XINU's scheduler}
+In most operating systems, all of the context switching is done at the entry
+and exit of the top-level ISR. When the scheduler changes the active process,
+the pointer to the active process' context is changed and all of the heavy
+lifting for context switching is differed to the top-level ISR.
+
+XINU has two ways that context switching can be done: via servicing an
+interrupt (as above) or in the middle of a syscall, without changing processor
+modes. XINU does context switching so deep into the call stack because they
+want every function to return in a predictable way. \TODO{reword}
+
+As designed, the context switcher in the schedule needs to accommodate new
+processes, as well as existing ones. New processes in XINU have their stack and
+context set up by the \code{create()} function so that their arguments are
+passed properly and the scheduler will have them ``return'' to their main
+function when they begin. As you look at Figure \ref{ctxsw}, notice that new
+processes have a different value for their program counter and return address.
+The return address for new programs is a special accounting function in the
+kernel, so that the kernel can free up resources after a process terminates by
+returning from its \code{main()} function.
+
+\begin{figure}
+\caption{Context save/restore in the scheduler}
+\label{ctxsw}
+\small
+\begin{verbatim}
+ctxsw:
+	/* Store all registers. */
+	/* We save lr twice because new processes can branch two ways:
+	 * - proceed to their first instruction, via pc.
+	 * - return via lr, which points to INTIRET. This puts kill() at the
+	 *   bottom of the call stack, so that we can reap a process when it's
+	 *   terminated.
+	 * All of this is set-up for us in create(), which builds the context
+	 * for new processes.
+	 *
+	 * Existing processes don't get a choice, they have to return to where
+	 * lr tells them to. We push lr twice for existing process so that it's
+	 * balanced with the pops, lower down in this function.
+	 */
+	push	{lr}
+	push	{lr}
+	push	{r0-ip}
+	/* Notice, we don't push sp, that's handled by resched(). */
+
+	/* Save sp to location given in argument 1, but only if the address is
+	 * non-null. */
+	cmp	r0, #0			@ Null address?
+	strne	sp, [r0, #0]		@ Nope, store it!
+
+	/* Restore all of the registers, for the new thread. */
+	cmp	r1, #0
+	ldrne	sp, [r1, #0]
+
+	/* Restore all of the registers. */
+	pop	{r0-ip}
+	pop	{lr}
+	pop	{pc}
+	.end ctxsw
+\end{verbatim}
+\end{figure}
+
+\subsection{Context switching in the ARM ISR}
+
+\begin{figure}
+\caption{Context save in the top-level ISR}
+\small
+\begin{verbatim}
+     1	IRQ_Routine:
+     2		/*
+     3		 * With pipelining on ARM, the PC is 2 instructions (8 bytes) ahead of
+     4		 * where we're currently executing. Usually the 'bl' instruction will
+     5		 * subtract 4 from the PC before storing it in LR, but since we came in
+     6		 * here via an exception we must do it ourselves.
+     7		 */
+     8		sub	lr, lr, #4
+     9	
+    10		/* Store lr_irq and the SPSR on the user stack */
+    11		push	{r0}
+    12		sub	sp, sp, #4
+    13		stmia	sp, {sp}^		@ Grab sp_usr
+    14		ldmfd	sp, {r0}		@ And load it into r0
+    15		add	sp, sp, #4
+    16	
+    17		sub	r0, r0, #4
+    18		stmia	r0, {lr}		@ Store lr_irq
+    19		mrs	lr, spsr
+    20		sub	r0, r0, #4
+    21		stmia	r0, {lr}		@ Store the spsr
+    22		pop	{r0}
+    23	
+    24		msr	cpsr, #MODE_SYS|I_BIT	@ Switch to sysmode, keep irq disabled
+    25	
+    26		/*
+    27		 * When we saved the lr_irq and the SPSR earlier, we weren't able to
+    28		 * modify the user mode stack pointer. Now we can adjust sp_usr to
+    29		 * account for what is effectively a 'push {spsr,lr_irq}'.
+    30		 */
+    31		sub	sp, sp, #8		@ Make room for lr_irq and SPSR
+    32		push	{r0-r3,r12,r14}		@ Push APCS registers
+    33	
+    34	       /* Call the ISR */
+    35	       LDR    r0, =VIC_BASE_ADDRESS
+    36	       LDR    r1, [r0, #VIC_VEC_ADDR] /* Discover source of interrupt */
+    37	       cmp    r1, #0
+    38	       beq    panic_no_isr
+    39	       blx    r1
+\end{verbatim}
+\end{figure}
+
+\begin{figure}
+\caption{Context restore in the top-level ISR}
+\small
+\begin{verbatim}
+    40	# Return from C ISR handler.
+    41		pop	{r0-r3,r12,r14}		@ Pop APCS registers
+    42	
+    43		/*
+    44		 * Prematurely 'pop' here, since we can't modify sp_usr in IRQ mode when we
+    45		 * really do restore lr_irq and SPSR.
+    46		 */
+    47		add	sp, sp, #8
+    48	
+    49		/* Enable interrupts and switch back to IRQ mode to use sp_irq again. */
+    50		msr	cpsr, #MODE_IRQ|I_BIT
+    51	
+    52		/* Load lr_irq from the user stack */
+    53		push	{r0}
+    54		sub	sp, sp, #4
+    55		stmia	sp, {sp}^		@ Grab sp_usr
+    56		ldmfd	sp, {r0}		@ And load it into r0
+    57		add	sp, sp, #4
+    58	
+    59		sub	r0, r0, #8		@ Undo the premature add from earlier
+    60		ldmfd	r0, {lr}
+    61		msr	spsr_cxsf, lr		@ Restore spsr
+    62		add	r0, r0, #4
+    63		ldmfd	r0, {lr}		@ Restore lr_isr
+    64		add	r0, r0, #4		@ nop
+    65		pop	{r0}
+    66	
+    67		/* Restore cpsr and return. */
+    68		subs	pc, lr, #0		@ Special ISR return instruction
+    69	
+    70	.endfunc
+    71	.end
+\end{verbatim}
+\end{figure}
+
 \section{XINU's platform configuration compiler}
 
 \subsection{Adding devices to a XINU platform}
