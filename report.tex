@@ -131,7 +131,7 @@ ctxsw:
 	 *
 	 * Existing processes don't get a choice, they have to return to where
 	 * lr tells them to. We push lr twice for existing process so that it's
-	 * balanced with the pops, lower down in this function.
+	 * balanced with the pops lower down in this function.
 	 */
 	push	{lr}
 	push	{lr}
@@ -157,8 +157,55 @@ ctxsw:
 
 \subsection{Context switching in the ARM ISR}
 
+Since interrupt mode has its own stack, care must be taken so that the context
+is saved an restored in the right place, and in the right order, when servicing
+an interrupt which could call the scheduler. The typical approach for a shared
+stack architecture would be:
+
+\begin{enumerate}
+\item Save all of the register on to of the active stack.
+\item Discover the source of the interrupt and branch to the correct handler.
+\item Restore all of the registers
+\item Return from the interrupt.
+\end{enumerate}
+
+\TODO{Stack diagram}
+
+In the initial attempt to get this working, the user's return register was
+stored on the IRQ stack; so the active process never really changed \---- but
+the stack did, and everything blew up! A more sophisticated approach needed to
+be taken so that the return register was stored on the active process' stack so
+that the right one would we restored.
+
+\TODO{Stack diagram}
+
+\begin{enumerate}
+\item \label{irq-magic-lr}The link register in IRQ mode has the value of the
+    active process' PC, so we need to save that on the user stack.
+\item \label{irq-magic-spsr}We also need to save the processor status register, since that will be
+    different between user processes. 
+\item Switch to system mode.
+\item Save all of the caller-save registers.
+\item Discover the source of the interrupt and branch to the correct handler.
+\item Restore the caller-save registers.
+\item Switch to IRQ mode.
+\item \label{irq-magic-restore}Restore the processor status register and link
+    register from the user stack (since it may have changed while servicing the
+    interrupt).
+\item Return from the interrupt.
+\end{enumerate}
+
+Steps \ref{irq-magic-lr}, \ref{irq-magic-spsr} and \ref{irq-magic-restore}
+are more involved than they let on. Fortunately, there is a special load and
+save instruction which allows privileged modes to access (but not set) the user
+mode register. So, all of the user stack operations have to be made without
+modify the user's stack pointer until we change into system mode. Lines 10 \---
+22 and 26 \--- 31 in Figure \ref{irq-save} and lines 43 \--- 47 and 52 \--- 65
+in Figure \ref{irq-restore} show in detail how this was done.
+
 \begin{figure}
 \caption{Context save in the top-level ISR}
+\label{irq-save}
 \small
 \begin{verbatim}
      1	IRQ_Routine:
@@ -205,6 +252,7 @@ ctxsw:
 
 \begin{figure}
 \caption{Context restore in the top-level ISR}
+\label{irq-restore}
 \small
 \begin{verbatim}
     40	# Return from C ISR handler.
