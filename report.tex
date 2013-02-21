@@ -169,7 +169,20 @@ stack architecture would be:
 \item Return from the interrupt.
 \end{enumerate}
 
-\TODO{Stack diagram}
+\begin{figure}[h]
+\caption{Stack while handling an interrupt on x86}
+\label{isr-stack-x86}
+\begin{verbatim}
++-------------------+
+Z user stack        Z
++-------------------+
+| user registers    |
++-------------------+
+| ISR activity      |
+|                   |
+    ...
+\end{verbatim}
+\end{figure}
 
 In the initial attempt to get this working, the user's return register was
 stored on the IRQ stack; so the active process never really changed \---- but
@@ -177,13 +190,31 @@ the stack did, and everything blew up! A more sophisticated approach needed to
 be taken so that the return register was stored on the active process' stack so
 that the right one would we restored.
 
-\TODO{Stack diagram}
+\begin{figure}[h]
+\caption{Stack while handling an interrupt on ARM}
+\label{isr-stack-arm}
+\TODO{Add IRQ stack}
+\begin{verbatim}
++-------------------+
+Z user stack        Z
++-------------------+
+| program counter   |
++-------------------+
+| processor status  |
++-------------------+
+| APCS registers    |
++-------------------+
+| ISR activity      |
+|                   |
+    ...
+\end{verbatim}
+\end{figure}
 
 \begin{enumerate}
 \item \label{irq-magic-lr}The link register in IRQ mode has the value of the
     active process' PC, so we need to save that on the user stack.
-\item \label{irq-magic-spsr}We also need to save the processor status register, since that will be
-    different between user processes. 
+\item \label{irq-magic-spsr}We also need to save the processor status register,
+    since that will be different between user processes. 
 \item Switch to system mode.
 \item Save all of the caller-save registers.
 \item Discover the source of the interrupt and branch to the correct handler.
