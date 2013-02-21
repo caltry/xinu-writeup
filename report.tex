@@ -20,6 +20,33 @@
 
 \tableofcontents
 
+\section{XINU Is Not U{\small NIX} (overview)}
+
+\subsection{Motivation}
+
+XINU is a very simple operating system that originally ran on the PDP-11. It's
+maintained its simple design by choice: it's primary purpose is to provide a
+platform for teaching operating systems courses. The latest platform XINU has
+been ported to is the MIPS-based Linksys routers, with the idea that the
+Linksys routers are a cheap platform (about \$60 each) with a simple
+architecture.
+
+In that spirit, we decided that we'd like to try to port XINU to the ARM
+platform because of the recent release of the even cheaper (\$35) Raspberry-PI
+and the opportunity to do a cool project.
+
+\subsection{ARM}
+
+\TODO{}
+
+\subsection{ARM Versatile Baseboard}
+
+\TODO{}
+
+\subsection{Raspberry-PI}
+
+\TODO{}
+
 \section{ARM Core Interrupt Handler}
 
 \TODO{}
@@ -40,7 +67,6 @@ uart:
                     -r uartRead    -g uartGetc       -w uartWrite 
                     -n ionull      -p uartPutc       -intr uartInterrupt
 
-/* Two uarts on the versatile */
 SERIAL0   is uart     on HARDWARE csr 0x101F1000 irq 12
 \end{verbatim}
 
@@ -168,7 +194,7 @@ Now that the lexer and parser were separated, the lexer didn't know what tokens
 to generate for the parser. I modified the build system to accommodate the dance
 that lex and yacc have to do to sort out their dependencies: generate the types
 for the tokens, generate the lexer (and the lexer header), generate the parser,
-then link. It's easier to see Figure \ref{lex-yacc-dependencies}.
+then link (illustrated in Figure \ref{lex-yacc-dependencies}).
 
 \section{QEMU}
 
