@@ -13,6 +13,7 @@
 
 \newcommand{\TODO}[1]{{\huge\color{red}TODO \Large #1}}
 \newcommand{\code}[1]{{\tt #1}}
+\newcommand{\unix}[0]{U{\small NIX}}
 
 \begin{document}
 
@@ -20,9 +21,7 @@
 
 \tableofcontents
 
-\section{XINU Is Not U{\small NIX} (overview)}
-
-\subsection{Motivation}
+\section{Motivation}
 
 XINU is a very simple operating system that originally ran on the PDP-11. It's
 maintained its simple design by choice: it's primary purpose is to provide a
@@ -35,17 +34,9 @@ In that spirit, we decided that we'd like to try to port XINU to the ARM
 platform because of the recent release of the even cheaper (\$35) Raspberry-PI
 and the opportunity to do a cool project.
 
-\subsection{ARM ISA}
-
-\TODO{}
-
-\subsection{ARM Versatile Baseboard}
-
-\TODO{}
-
-\subsection{Raspberry-PI}
-
-\TODO{}
+Work started on the QEMU-emulated ARM Versatile Baseboard, since it was an
+easier platform to debug while bootstrapping the core ARM functionality of XINU
+before supporting the harder to debug Raspberry PI.
 
 \section{Handling interrupts and context switches}
 
@@ -399,7 +390,7 @@ the lexer, what it should expect. Instead, Yacc must define the tokens and pass
 them off to lex.
 
 \begin{figure}
-\caption{The dependency diagram for the lexer and parser.}
+\caption{The dependency graph for the lexer and parser.}
 \label{lex-yacc-dependencies}
 \includegraphics{graphs/lex_yacc_dependencies_dot.pdf}
 \end{figure}
@@ -468,9 +459,69 @@ then link (illustrated in Figure \ref{lex-yacc-dependencies}).
 
 \section{QEMU}
 
-\TODO{}
+The majority of my time was spent on the QEMU platform, emulating the ARM
+Versatile Baseboard with an ARM 926EJ-S core. The porting work was started here
+because a lot of the tasks focused on bringing up the generic ARM architecture;
+device specific work came towards the tale-end of the project.
 
 \subsection{QEMU's broken VIC}
+
+There seemed to be an intermittent problem with servicing interrupts in QEMU.
+This was eventually tracked down to a bug in older versions of QEMU, which
+didn't correctly emulate the Vectored Interrupt Controller (VIC). The VIC
+prioritizes interrupts and provides the address of the ISR for the interrupt
+that needs to be serviced \---- it saves quite a few cycles while handling
+interrupts and simplifies the overall interrupt-handing procedure.
+
+The bug in QEMU was an off-by-one error, which gave the wrong ISR for the
+interrupt. Work was started to develop a workaround, which was eventually
+abandoned since newer versions of QEMU going forward would not have the bug.
+
+\section{Reflection}
+
+\subsection{XINU is not \unix}
+
+There were many times that I went into a problem and tried to reason about it
+the \unix~ way. Even though the names of the function calls were similar, I was
+eventually able to accept XINU's simple organization and find a way to conform
+my work to the overall design of XINU so that things worked harmoniously.
+
+\subsection{ARM Architecture}
+
+Once I became more familiar with the ARM ISA, I really came to like it. To me,
+it's the combination of the best of MIPS with the best of x86: a RISC
+architecture that's willing to add a couple of complicated instructions to
+simplify everything else.
+
+Memory operations with the ARM ISA are very similar to x86 with just a few of
+the bells and whistles missing, allowing you to give one layer of indirection
+for a load and store call. So, if we have something stored at an offset from a
+base address. For example, if we want to access an element whose index is
+stored in \code{r3} in an array of 4 byte integers whose pointer is in
+\code{r0} and store the value in \code{r1}:
+
+\begin{verbatim}
+       mov  r4, #4
+       mul  r3, r4, r3
+       ldr  r1, [r0, r3]
+\end{verbatim}
+
+All instructions can be conditionally executed, based on the state of the last
+comparison. This allows us to do cheap checks for null pointers or other simple
+operations without having to clear the pipeline with a branch. In Figure
+\ref{ctxsw}, I did this when checking to see if the one of the arguments was
+null:
+
+\begin{verbatim}
+        cmp     r0, #0              @ Null address?
+        strne   sp, [r0, #0]        @ Nope, store it!
+\end{verbatim}
+
+Once I found a way to work with my stack pointer changing while handing an
+interrupt (which was the first time I'd encountered any architecture that did
+that), it was pretty pleasant.
+
+\subsection{Platforms targeted}
 
 \TODO{}
 
