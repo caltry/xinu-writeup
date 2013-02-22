@@ -479,12 +479,18 @@ abandoned since newer versions of QEMU going forward would not have the bug.
 
 \section{Reflection}
 
-\subsection{XINU is not \unix}
+\subsection{Platforms targeted}
 
-There were many times that I went into a problem and tried to reason about it
-the \unix~ way. Even though the names of the function calls were similar, I was
-eventually able to accept XINU's simple organization and find a way to conform
-my work to the overall design of XINU so that things worked harmoniously.
+Working with QEMU was much nicer than dealing with the Raspberry PI. The
+emulator was based on hardware that's really easy to find documentation for and
+was a lot simpler to debug.
+
+The Raspberry PI is targeted at consumers and developers higher on the software
+stack. While there are some components in common with the ARM Versatile Board,
+the PI didn't have a JTAG debugging header, making things difficult to
+diagnose. The Ethernet controller on the Raspberry PI was connected over USB,
+so we would have had to implement a working USB driver before supporting
+Ethernet. It would have been easier to target a real development board.
 
 \subsection{ARM Architecture}
 
@@ -521,8 +527,17 @@ Once I found a way to work with my stack pointer changing while handing an
 interrupt (which was the first time I'd encountered any architecture that did
 that), it was pretty pleasant.
 
-\subsection{Platforms targeted}
+\subsection{XINU is not \unix}
 
-\TODO{}
+There were many times that I went into a problem and tried to reason about it
+the \unix~ way. Even though the names of the function calls were similar, I was
+eventually able to accept XINU's simple organization and find a way to conform
+my work to the overall design of XINU so that things worked harmoniously.
+
+This project was a great opportunity for me to get more experience with the
+bottom-half of operating systems development. While the project could be very
+frustrating at times (correct interrupt handling took over a month of confused
+debugging), I learned a lot and feel a lot more comfortable working in this
+area.
 
 \end{document}
