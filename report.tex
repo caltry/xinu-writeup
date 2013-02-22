@@ -24,15 +24,14 @@
 \section{Motivation}
 
 XINU is a very simple operating system that originally ran on the PDP-11. It's
-maintained its simple design by choice: it's primary purpose is to provide a
-platform for teaching operating systems courses. The latest platform XINU has
-been ported to is the MIPS-based Linksys routers, with the idea that the
+maintained its simple design by choice: its primary purpose is to provide a
+platform for teaching operating systems courses. The most recent platform XINU
+has been ported to is the MIPS-based Linksys routers, with the idea that the
 Linksys routers are a cheap platform (about \$60 each) with a simple
 architecture.
 
 In that spirit, we decided that we'd like to try to port XINU to the ARM
-platform because of the recent release of the even cheaper (\$35) Raspberry-PI
-and the opportunity to do a cool project.
+platform because of the recent release of the even cheaper (\$35) Raspberry-PI.
 
 Work started on the QEMU-emulated ARM Versatile Baseboard, since it was an
 easier platform to debug while bootstrapping the core ARM functionality of XINU
@@ -94,7 +93,7 @@ lifting for context switching is differed to the top-level ISR.
 
 XINU has two ways that context switching can be done: via servicing an
 interrupt (as above) or in the middle of a syscall, without changing processor
-modes. XINU does context switching so deep into the call stack so that every
+modes. XINU does context switching this deep into the call stack so that every
 function call (including the scheduler) eventually returns to its caller.
 
 As designed, the context switcher in the scheduler needs to accommodate new
@@ -151,7 +150,7 @@ ctxsw:
 \subsection{Context switching in the ARM ISR}
 
 Since interrupt mode has its own stack, care must be taken so that the context
-is saved an restored in the right place, and in the right order, when servicing
+is saved and restored in the right place, and in the right order, when servicing
 an interrupt which could call the scheduler. The typical approach for a shared
 stack architecture would be:
 
@@ -190,12 +189,12 @@ The final interrupt handling procedure:
 \end{enumerate}
 
 Steps \ref{irq-magic-lr}, \ref{irq-magic-spsr} and \ref{irq-magic-restore}
-are more involved than they let on. Fortunately, there is a special load and
-save instruction which allows privileged modes to access (but not set) the user
-mode register. So, all of the user stack operations have to be made without
-modify the user's stack pointer until we change into system mode. Lines 10 \---
-22 and 26 \--- 31 in Figure \ref{irq-save} and lines 43 \--- 47 and 52 \--- 65
-in Figure \ref{irq-restore} show in detail how this was done.
+are more involved than it initially appeared. Fortunately, there is a special
+load and save instruction which allows privileged modes to access (but not set)
+the user mode register. So, all of the user stack operations have to be made
+without modify the user's stack pointer until we change into system mode. Lines
+10 \--- 22 and 26 \--- 31 in Figure \ref{irq-save} and lines 43 \--- 47 and 52
+\--- 65 in Figure \ref{irq-restore} show in detail how this was done.
 
 \begin{figure}
 \caption{Context save in the top-level ISR}
@@ -343,12 +342,12 @@ how it's implemented.
 \subsection{Fixing changes in Flex}
 
 The compiler that generated these device entries depended on the values of some
-components of Flex. In Flex 2.5.35, they changed the type of \code{yyleng} from
-an \code{int} to a \code{size\_t}, since the length of a token could never be
-negative. It was a reasonable change, but people using Flex historically don't
-include a header file defining these types \---- everyone just re-defined them
-and they matched up properly. This all broke with the type change for
-\code{yyleng}.
+components of Flex.  In Flex 2.5.35, the type of \code{yyleng} (which stores
+the length of a token) was changed from an \code{int} to a \code{size\_t},
+since the length of a token could never be negative.  It was a reasonable
+change, but people using Flex historically don't include a header file defining
+these types \---- everyone just re-defined them and they matched up properly.
+This all broke with the type change for \code{yyleng}.
 
 Simply changing the defined type in the compiler to a \code{size\_t} wouldn't
 work; then the project would only work for people who had really up to date
@@ -356,12 +355,12 @@ systems. The compiler had to be modified so that it started building header
 files and using the declarations there.
 
 \paragraph{The tightly coupled relationship between \code{lex} and \code{yacc}}
-Lex and Yacc have an interesting relationship. Lex, on its own, can happily scan
-through source files and emitting tokens that have been declared in its source
+Lex and Yacc have an interesting relationship. Lex, on its own, can happily
+scan through source files and emit tokens that have been declared in its source
 file. When we bring Yacc into the picture, it's not aware of the types of
-tokens that it should be getting from Lex, and it has no desire to by told by
-the lexer, what it should expect. Instead, Yacc must define the tokens and pass
-them off to lex.
+tokens that it should be getting from Lex, and it can't be told by the lexer
+what tokens it should expect. Instead, yacc must define the tokens and pass
+its expectations off to lex.
 
 Our parser expects to be able to inspect a lot of things from the scanner, so
 that it can manually copy over some parts of the source config file verbatim.
@@ -415,7 +414,7 @@ In the parser:
 Removing the generated scanner from the parser was easy enough, since they were
 re-integrated at link-time. Removing the generated lexer revealed the 
 parser depended on a static function in the lexer, which it no longer had
-access to at link time. This function, \code{input()}, gave provided the raw
+access to at link time. This function, \code{input()}, provides the raw
 stream of characters that the lexer was looking at. The compiler was using that
 function directly to support copying some parts of the configuration file over
 into the destination config verbatim. This was fixed by moving the logic for
@@ -488,6 +487,8 @@ stored in \code{r3} in an array of 4 byte integers whose pointer is in
        ldr  r1, [r0, r3]
 \end{verbatim}
 
+\pagebreak
+
 All instructions can be conditionally executed, based on the state of the last
 comparison. This allows us to do cheap checks for null pointers or other simple
 operations without having to clear the pipeline with a branch. In Figure
@@ -505,10 +506,13 @@ that), it was pretty pleasant.
 
 \subsection{XINU is not \unix}
 
-There were many times that I went into a problem and tried to reason about it
-the \unix~ way. Even though the names of the function calls were similar, I was
-eventually able to accept XINU's simple organization and find a way to conform
-my work to the overall design of XINU so that things worked harmoniously.
+There were many times that I approached a problem and tried to reason about it
+the \unix~ way and that didn't work too well with XINU.  The focus on
+simplicity initially made it hard to add onto XINU in a portable way, since it
+appeared that I would be unable to share common code (e.g. a bootloader)
+between the two ARM platforms without duplicating code.  I was eventually able
+to accept XINU's simple organization and find a way to conform my work to the
+overall design of XINU so that things worked harmoniously.
 
 This project was a great opportunity for me to get more experience with the
 bottom-half of operating systems development. While the project could be very
