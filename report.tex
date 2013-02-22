@@ -40,7 +40,9 @@ before supporting the harder to debug Raspberry PI.
 
 \section{Handling interrupts and context switches}
 
-\TODO{Intro to section}
+Correct interrupt handling ({\em exception} handling, in ARM nomenclature)
+requires some care when targeting ARM devices, due to special conditions that
+are not present on all platforms.
 
 \subsection{Exception states in the ARM core}
 
@@ -92,10 +94,10 @@ lifting for context switching is differed to the top-level ISR.
 
 XINU has two ways that context switching can be done: via servicing an
 interrupt (as above) or in the middle of a syscall, without changing processor
-modes. XINU does context switching so deep into the call stack because they
-want every function to return in a predictable way. \TODO{reword}
+modes. XINU does context switching so deep into the call stack so that every
+function call (including the scheduler) eventually returns to its caller.
 
-As designed, the context switcher in the schedule needs to accommodate new
+As designed, the context switcher in the scheduler needs to accommodate new
 processes, as well as existing ones. New processes in XINU have their stack and
 context set up by the \code{create()} function so that their arguments are
 passed properly and the scheduler will have them ``return'' to their main
@@ -160,47 +162,17 @@ stack architecture would be:
 \item Return from the interrupt.
 \end{enumerate}
 
-\begin{figure}[h]
-\caption{Stack while handling an interrupt on x86}
-\label{isr-stack-x86}
-\begin{verbatim}
-+-------------------+
-Z user stack        Z
-+-------------------+
-| user registers    |
-+-------------------+
-| ISR activity      |
-|                   |
-    ...
-\end{verbatim}
-\end{figure}
-
 In the initial attempt to get this working, the user's return register was
 stored on the IRQ stack; so the active process never really changed \---- but
 the stack did, and everything blew up! A more sophisticated approach needed to
 be taken so that the return register was stored on the active process' stack so
-that the right one would we restored.
+that the right one would we restored. In the final design, nothing was stored
+on the IRQ stack by the time a call to the correct interrupt handler was made.
 
-\begin{figure}[h]
-\caption{Stack while handling an interrupt on ARM}
-\label{isr-stack-arm}
-\TODO{Add IRQ stack}
-\begin{verbatim}
-+-------------------+
-Z user stack        Z
-+-------------------+
-| program counter   |
-+-------------------+
-| processor status  |
-+-------------------+
-| APCS registers    |
-+-------------------+
-| ISR activity      |
-|                   |
-    ...
-\end{verbatim}
-\end{figure}
+\pagebreak
 
+\noindent
+The final interrupt handling procedure:
 \begin{enumerate}
 \item \label{irq-magic-lr}The link register in IRQ mode has the value of the
     active process' PC, so we need to save that on the user stack.
@@ -312,13 +284,15 @@ in Figure \ref{irq-restore} show in detail how this was done.
 \end{verbatim}
 \end{figure}
 
+\pagebreak
+
 \section{XINU's platform configuration compiler}
 
 \subsection{Adding devices to a XINU platform}
 
-Marquette University's version of XINU includes a small compiler for
-transforming a description of the hardware for a specific plaform into header
-files and a routine that populates the device table at startup.
+The MIPS version of XINU includes a small compiler for transforming a
+description of the hardware for a specific platform into header files and a
+routine that populates the device table at startup.
 
 So, the description:
 
@@ -389,12 +363,6 @@ tokens that it should be getting from Lex, and it has no desire to by told by
 the lexer, what it should expect. Instead, Yacc must define the tokens and pass
 them off to lex.
 
-\begin{figure}
-\caption{The dependency graph for the lexer and parser.}
-\label{lex-yacc-dependencies}
-\includegraphics{graphs/lex_yacc_dependencies_dot.pdf}
-\end{figure}
-
 Our parser expects to be able to inspect a lot of things from the scanner, so
 that it can manually copy over some parts of the source config file verbatim.
 Because of this, we have an interweaving of mutually recursive dependencies
@@ -412,6 +380,7 @@ lexer defines a lot of it's own types. Some structures are defined differently
 in the generated header and generated lexer (possibly to hide some information
 from clients?).
 
+\begin{comment}
 \begin{figure}
 \label{include-c-h}\caption{This generated type errors}
 In the lex.yy.h:
@@ -440,6 +409,7 @@ In the parser:
 #include "lex.yy.c"
 \end{verbatim}
 \end{figure}
+\end{comment}
 
 \paragraph{Separated, at last!}
 Removing the generated scanner from the parser was easy enough, since they were
@@ -456,6 +426,12 @@ to generate for the parser. I modified the build system to accommodate the dance
 that lex and yacc have to do to sort out their dependencies: generate the types
 for the tokens, generate the lexer (and the lexer header), generate the parser,
 then link (illustrated in Figure \ref{lex-yacc-dependencies}).
+
+\begin{figure}
+\caption{The dependency graph for the lexer and parser.}
+\label{lex-yacc-dependencies}
+\includegraphics{graphs/lex_yacc_dependencies_dot.pdf}
+\end{figure}
 
 \section{QEMU}
 
