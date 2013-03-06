@@ -257,7 +257,7 @@ without modify the user's stack pointer until we change into system mode. Lines
     46		 */
     47		add	sp, sp, #8
     48	
-    49		/* Enable interrupts and switch back to IRQ mode to use sp_irq again. */
+    49		/* Switch back to IRQ mode to use sp_irq again; keep interrupts disabled. */
     50		msr	cpsr, #MODE_IRQ|I_BIT
     51	
     52		/* Load lr_irq from the user stack */
