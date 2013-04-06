@@ -7,6 +7,8 @@ digraph G {
     confy [label = "config.y"];
     lexyyh [label = "lexer headers"];
     ytabh [label = "token declarations"];
+    scannerc [label = "scanner.c"];
+    parserc [label = "parser.c"];
     scanner[label = "scanner"];
     parser[label = "parser"];
     compiler[label = "config compiler"];
@@ -16,10 +18,12 @@ digraph G {
     //lex -> scanner [label = "codegen"];
     //yacc -> parser [label = "codegen"];
 
-    confl -> scanner [label = "lex"];
+    confl -> scannerc [label = "lex"];
     confl -> lexyyh [label = "lex"];
-    confy -> parser [label = "yacc"];
+    confy -> parserc [label = "yacc"];
     confy -> ytabh [label = "yacc"];
+    scannerc -> scanner [label = "cc"];
+    parserc -> parser [label = "cc"];
     lexyyh -> parser [label = "cc"];
     ytabh -> scanner [label = "cc"];
 
